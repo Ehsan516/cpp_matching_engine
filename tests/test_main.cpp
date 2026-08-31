@@ -1,4 +1,7 @@
 #include <iostream>
+#include "engine/types.h"
+
+using namespace eng;
 
 static int fails=0;
 
@@ -10,8 +13,15 @@ void test_sanity()
     CHECK(1+1==2);
 }
 
+void test_limits(){
+    CHECK(MIN_PX<MAX_PX);
+    CHECK(maxQty == 1000000000);
+    CHECK(Side::Buy!=Side::Sell);
+}
+
 int main() {
     test_sanity();
+    test_limits();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";
