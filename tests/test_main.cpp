@@ -1,6 +1,7 @@
 #include <iostream>
 #include "engine/types.h"
 #include "engine/order.h"
+#include "engine/book.h"
 
 using namespace eng;
 
@@ -27,10 +28,22 @@ void test_order_basic() {
     CHECK(o.px==10000 && o.qty==10);
 }
 
+void test_two_sells() {
+    OrderBook b;
+    b.add_resting({1, Side::Sell, 10002, 5, 1});
+    b.add_resting({2, Side::Sell, 10000, 3, 2});
+    CHECK(b.askLevels()==2);
+    CHECK(b.bestAsk()==10000);
+
+    b.add_resting({3,Side::Sell,10000,1,3});
+    CHECK(b.askLevels()==2);   // same level, not a new one
+}
+
 int main() {
     test_sanity();
     test_limits();
     test_order_basic();
+    test_two_sells();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";
