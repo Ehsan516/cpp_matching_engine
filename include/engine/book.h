@@ -2,9 +2,16 @@
 #include <map>
 #include <list>
 #include <functional>
+#include <vector>
 #include "engine/order.h"
 
 namespace eng {
+
+struct Lvl {
+    Side side;
+    Px px;
+    Qty total;
+};
 
 class OrderBook {
 public:
@@ -14,6 +21,8 @@ public:
     Px bestAsk() const { return asks.begin()->first; }  // dont call on empty book
     std::size_t bidLevels() const {return bids.size();}
     Px bestBid() const { return bids.begin()->first; }
+
+    std::vector<Lvl> snapshot() const;  // bids high->low then asks low->high
 
 private:
     std::map<Px, std::list<Order>> asks;   // lowest px first

@@ -49,12 +49,32 @@ void test_bids_sorted(){
     CHECK(b.askLevels()==0);
 }
 
+void test_snapshot() {
+    OrderBook b;
+    CHECK(b.snapshot().empty());
+
+    b.add_resting({1, Side::Sell, 10002, 3, 1});
+    b.add_resting({2, Side::Buy, 9998, 4, 2});
+    b.add_resting({3, Side::Sell, 10000, 5, 3});
+    b.add_resting({4, Side::Sell, 10000, 2, 4});
+    b.add_resting({5, Side::Buy, 9999, 1, 5});
+
+    auto s = b.snapshot();
+    CHECK(s.size()==4);
+    if(s.size()!=4) return;
+    CHECK(s[0].side==Side::Buy && s[0].px==9999 && s[0].total==1);
+    CHECK(s[1].side==Side::Buy && s[1].px==9998 && s[1].total==4);
+    CHECK(s[2].side==Side::Sell&& s[2].px==10000&& s[2].total==7);
+    CHECK(s[3].side==Side::Sell && s[3].px==10002 && s[3].total==3);
+}
+
 int main() {
     test_sanity();
     test_limits();
     test_order_basic();
     test_two_sells();
     test_bids_sorted();
+    test_snapshot();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";
