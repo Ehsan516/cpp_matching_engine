@@ -7,7 +7,8 @@ void OrderBook::add_resting(const Order &o)
     if(o.side == Side::Sell) {
         asks[o.px].push_back(o);
     }
-    // TODO bids
+    else
+        bids[o.px].push_back(o);
 }
 
 }
