@@ -68,6 +68,19 @@ void test_snapshot() {
     CHECK(s[3].side==Side::Sell && s[3].px==10002 && s[3].total==3);
 }
 
+// T06 - same price queue, oldest first
+void test_fifo_same_px() {
+    OrderBook b;
+    b.match({11, Side::Sell, 10000, 4, 1});
+    b.match({12, Side::Sell, 10000, 5, 2});
+    auto tr = b.match({20, Side::Buy, 10000, 6, 3});
+
+    CHECK(tr.size()==2);
+    if (tr.size()<2) return;
+    CHECK(tr[0].maker==11 && tr[0].taker==20 && tr[0].qty==4);
+    CHECK(tr[1].maker==12 && tr[1].qty==2);
+}
+
 int main() {
     test_sanity();
     test_limits();
@@ -75,6 +88,7 @@ int main() {
     test_two_sells();
     test_bids_sorted();
     test_snapshot();
+    test_fifo_same_px();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";

@@ -12,4 +12,10 @@ struct Order {
     //Qty orig_qty;
 };
 
+struct Trade {
+    OrderId maker, taker;
+    Px px;  // always the resting (maker) price
+    Qty qty;
+};
+
 }

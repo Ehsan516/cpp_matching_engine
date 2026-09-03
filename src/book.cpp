@@ -19,6 +19,13 @@ void OrderBook::add_resting(const Order &o)
         bids[o.px].push_back(o);
 }
 
+std::vector<Trade> OrderBook::match(Order in)
+{
+    // TODO actual matching. just rests for now
+    add_resting(in);
+    return {};
+}
+
 std::vector<Lvl> OrderBook::snapshot() const
 {
     std::vector<Lvl> out;
