@@ -1,6 +1,7 @@
 #include "engine/book.h"
 #include <limits>
 #include <stdexcept>
+#include <algorithm>
 
 namespace eng {
 
@@ -21,9 +22,30 @@ void OrderBook::add_resting(const Order &o)
 
 std::vector<Trade> OrderBook::match(Order in)
 {
-    // TODO actual matching. just rests for now
-    add_resting(in);
-    return {};
+    std::vector<Trade> trades;
+
+    if(in.side==Side::Buy) {
+        while(in.qty>0 && !asks.empty()) {
+            auto lvl = asks.begin();
+            if(lvl->first > in.px) break;   // best ask above our limit, stop
+
+            auto &q = lvl->second;
+            while(in.qty > 0 && !q.empty()) {
+                Order &rest = q.front();
+                Qty n = std::min(in.qty, rest.qty);
+                trades.push_back({rest.id, in.id, rest.px, n});
+                in.qty -= n;
+                rest.qty -= n;
+                if(rest.qty==0) q.pop_front();
+                // ^ rest is dangling after this, dont touch it
+            }
+            if(q.empty()) asks.erase(lvl);
+        }
+    }
+    // TODO sell side
+
+    if(in.qty > 0) add_resting(in);
+    return trades;
 }
 
 std::vector<Lvl> OrderBook::snapshot() const
