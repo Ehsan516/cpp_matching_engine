@@ -42,7 +42,23 @@ std::vector<Trade> OrderBook::match(Order in)
             if(q.empty()) asks.erase(lvl);
         }
     }
-    // TODO sell side
+    else {
+        // same thing mirrored. bids.begin() is the highest bid
+        while (in.qty>0 && !bids.empty()) {
+            auto lvl = bids.begin();
+            if(lvl->first < in.px) break;
+
+            auto& q = lvl->second;
+            while(in.qty>0 && !q.empty()) {
+                Order &rest = q.front();
+                Qty n = std::min(in.qty, rest.qty);
+                trades.push_back({rest.id, in.id, rest.px, n});
+                in.qty-=n;  rest.qty-=n;
+                if(rest.qty==0) q.pop_front();
+            }
+            if(q.empty()) bids.erase(lvl);
+        }
+    }
 
     if(in.qty > 0) add_resting(in);
     return trades;

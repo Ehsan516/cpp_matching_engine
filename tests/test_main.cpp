@@ -81,6 +81,36 @@ void test_fifo_same_px() {
     CHECK(tr[1].maker==12 && tr[1].qty==2);
 }
 
+void test_fifo_sell_side() {
+    OrderBook b;
+    b.match({31, Side::Buy, 10000, 4, 1});
+    b.match({32, Side::Buy, 10000, 5, 2});
+    auto tr = b.match({40, Side::Sell, 10000, 6, 3});
+    CHECK(tr.size()==2);
+    if(tr.size()<2) return;
+    CHECK(tr[0].maker==31 && tr[0].taker==40 && tr[0].qty==4);
+    CHECK(tr[1].maker==32 && tr[1].qty==2);
+    CHECK(b.bidLevels()==1);
+}
+
+// example C from the pdd
+void test_exC(){
+    OrderBook b;
+    b.match({31, Side::Buy, 10005, 2, 1});
+    b.match({32, Side::Buy, 10003, 4, 2});
+    auto tr = b.match({40, Side::Sell, 10004, 5, 3});
+
+    CHECK(tr.size()==1);
+    if (tr.empty()) return;
+    CHECK(tr[0].maker==31 && tr[0].px==10005 && tr[0].qty==2);  // resting px not 10004
+
+    auto s = b.snapshot();
+    CHECK(s.size()==2);
+    if(s.size()!=2) return;
+    CHECK(s[0].side==Side::Buy && s[0].px==10003 && s[0].total==4);
+    CHECK(s[1].side==Side::Sell && s[1].px==10004 && s[1].total==3);
+}
+
 int main() {
     test_sanity();
     test_limits();
@@ -89,6 +119,8 @@ int main() {
     test_bids_sorted();
     test_snapshot();
     test_fifo_same_px();
+    test_fifo_sell_side();
+    test_exC();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";

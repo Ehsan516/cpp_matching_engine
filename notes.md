@@ -4,4 +4,6 @@
 - fifo test is RED on purpose. match() is a stub
 - buy side matching in, fifo test green
 
-next: sell side (walk bids high->low). then T03-T08
+- sell side done. its a copy paste of the buy loop, clean up later maybe
+
+next: T03-T08 properly
