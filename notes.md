@@ -6,4 +6,6 @@
 
 - sell side done. its a copy paste of the buy loop, clean up later maybe
 
-next: T03-T08 properly
+- T02-T08 in, all green. M2 done i think
+
+next: engine layer w/ seq numbers + seen ids, then cancel

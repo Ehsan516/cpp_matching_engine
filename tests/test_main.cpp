@@ -111,6 +111,83 @@ void test_exC(){
     CHECK(s[1].side==Side::Sell && s[1].px==10004 && s[1].total==3);
 }
 
+// T02
+void t02_no_cross() {
+    OrderBook b;
+    auto t1 = b.match({1, Side::Buy, 9999, 5, 1});
+    auto t2 = b.match({2,Side::Sell,10000,5,2});
+    CHECK(t1.empty() && t2.empty());
+    CHECK(b.bidLevels()==1 && b.askLevels()==1);
+}
+
+// T03
+void t03_full_match() {
+    OrderBook b;
+    b.match({1, Side::Sell, 10000, 7, 1});
+    auto tr = b.match({2, Side::Buy, 10000, 7, 2});
+    CHECK(tr.size()==1);
+    CHECK(tr.size()==1 && tr[0].qty==7 && tr[0].px==10000);
+    CHECK(b.snapshot().empty());   // both gone
+}
+
+// T04 incoming smaller, maker keeps rest + its place in line
+void t04_maker_keeps_spot() {
+    OrderBook b;
+    b.match({1, Side::Sell, 10000, 10, 1});
+    b.match({2, Side::Sell, 10000, 5, 2});
+
+    auto a = b.match({3, Side::Buy, 10000, 4, 3});
+    CHECK(a.size()==1 && a[0].maker==1 && a[0].qty==4);
+
+    auto c = b.match({4, Side::Buy, 10000, 7, 4});
+    CHECK(c.size()==2);
+    if(c.size()<2) return;
+    CHECK(c[0].maker==1 && c[0].qty==6);   // 1 still first
+    CHECK(c[1].maker==2 && c[1].qty==1);
+}
+
+//T05
+void t05_incoming_bigger() {
+    OrderBook b;
+    b.match({1,Side::Buy,10000,3,1});
+    auto tr = b.match({2, Side::Sell, 9995, 8, 2});
+    CHECK(tr.size()==1 && tr[0].qty==3);
+    auto s = b.snapshot();
+    CHECK(s.size()==1);
+    if(s.empty()) return;
+    CHECK(s[0].side==Side::Sell && s[0].px==9995 && s[0].total==5);
+}
+
+// T07 sweep (ex B) + stops at limit
+void t07_sweep() {
+    OrderBook b;
+    b.match({11, Side::Sell, 10000, 4, 1});
+    b.match({12, Side::Sell, 10000, 5, 2});
+    b.match({13, Side::Sell, 10002, 3, 3});
+    b.match({14, Side::Sell, 10003, 9, 4});   // above limit, shouldnt touch
+
+    auto tr = b.match({20, Side::Buy, 10002, 10, 5});
+    CHECK(tr.size()==3);
+    if(tr.size()!=3) return;
+    CHECK(tr[0].maker==11 && tr[0].px==10000 && tr[0].qty==4);
+    CHECK(tr[1].maker==12 && tr[1].px==10000 && tr[1].qty==5);
+    CHECK(tr[2].maker==13 && tr[2].px==10002 && tr[2].qty==1);
+
+    auto s=b.snapshot();
+    CHECK(s.size()==2);
+    if(s.size()!=2) return;
+    CHECK(s[0].px==10002 && s[0].total==2);
+    CHECK(s[1].px==10003 && s[1].total==9);
+}
+
+// T08 buy side. sell side is in test_exC
+void t08_px_improve_buy() {
+    OrderBook b;
+    b.match({1, Side::Sell, 9990, 2, 1});
+    auto tr = b.match({2, Side::Buy, 10000, 2, 2});
+    CHECK(tr.size()==1 && tr[0].px==9990);
+}
+
 int main() {
     test_sanity();
     test_limits();
@@ -121,6 +198,12 @@ int main() {
     test_fifo_same_px();
     test_fifo_sell_side();
     test_exC();
+    t02_no_cross();
+    t03_full_match();
+    t04_maker_keeps_spot();
+    t05_incoming_bigger();
+    t07_sweep();
+    t08_px_improve_buy();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";
