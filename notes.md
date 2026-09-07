@@ -8,4 +8,7 @@
 
 - T02-T08 in, all green. M2 done i think
 
-next: engine layer w/ seq numbers + seen ids, then cancel
+- MatchingEngine: owns book, seen set, seq counter. validates before touching anything
+  seen = never reuse ids. NOT the same as "active", thats for cancel later
+
+next: cancel by id (just scan the book for now, index later)

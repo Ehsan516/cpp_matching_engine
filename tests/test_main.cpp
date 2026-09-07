@@ -2,6 +2,7 @@
 #include "engine/types.h"
 #include "engine/order.h"
 #include "engine/book.h"
+#include "engine/engine.h"
 
 using namespace eng;
 
@@ -188,6 +189,49 @@ void t08_px_improve_buy() {
     CHECK(tr.size()==1 && tr[0].px==9990);
 }
 
+// ---- engine level ----
+
+void eng_add_basic() {
+    MatchingEngine e;
+    auto r = e.add(1001, Side::Sell, 10000, 10);
+    CHECK(r.err==Err::None && r.trades.empty() && r.left==10);
+    r = e.add(1002, Side::Buy, 10000, 6);
+    CHECK(r.err==Err::None && r.trades.size()==1 && r.left==0);
+}
+
+void eng_dup_ids() {
+    MatchingEngine e;
+    e.add(1, Side::Sell, 10000, 5);
+    CHECK(e.add(1, Side::Buy, 9000, 1).err == Err::DUPLICATE_ID);   // active
+
+    e.add(2, Side::Buy, 10000, 5);   // fills 1 and 2 fully
+    CHECK(e.add(2, Side::Buy, 9000, 1).err == Err::DUPLICATE_ID);   // filled
+    CHECK(e.add(1, Side::Sell, 9000, 1).err==Err::DUPLICATE_ID);
+    CHECK(e.snapshot().empty());
+}
+
+void eng_invalid() {
+    MatchingEngine e;
+    CHECK(e.add(0, Side::Buy, 100, 1).err == Err::INVALID_VALUE);
+    CHECK(e.add(1, Side::Buy, 0, 1).err == Err::INVALID_VALUE);
+    CHECK(e.add(1, Side::Buy, 100, 0).err == Err::INVALID_VALUE);
+    CHECK(e.add(1, Side::Buy, -5, 1).err == Err::INVALID_VALUE);
+    CHECK(e.add(1, Side::Buy, MAX_PX+1, 1).err == Err::INVALID_VALUE);
+    CHECK(e.add(1, Side::Buy, 100, maxQty+1).err == Err::INVALID_VALUE);
+
+    // rejected adds dont reserve the id
+    CHECK(e.add(1, Side::Buy, 100, 1).err == Err::None);
+    CHECK(e.snapshot().size()==1);
+}
+
+void eng_reset() {
+    MatchingEngine e;
+    e.add(7, Side::Buy, 100, 1);
+    e.reset();
+    CHECK(e.snapshot().empty());
+    CHECK(e.add(7, Side::Buy, 100, 1).err == Err::None);
+}
+
 int main() {
     test_sanity();
     test_limits();
@@ -204,6 +248,11 @@ int main() {
     t05_incoming_bigger();
     t07_sweep();
     t08_px_improve_buy();
+
+    eng_add_basic();
+    eng_dup_ids();
+    eng_invalid();
+    eng_reset();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";
