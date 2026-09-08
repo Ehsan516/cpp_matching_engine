@@ -14,4 +14,6 @@
 - cancel: linear scan of both sides, O(n orders). erase the level if it goes empty
   T01 T09-T13 green
 
-next: boundary values T16, then invariant checker
+- T16 bounds ok, UINT64_MAX id works
+
+next: invariant checker

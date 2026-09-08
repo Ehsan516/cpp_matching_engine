@@ -311,6 +311,25 @@ void exC_followup() {
     CHECK(e.add(31, Side::Buy, 10000, 1).err == Err::DUPLICATE_ID);
 }
 
+// T16 edges should all be accepted
+void t16_bounds() {
+    MatchingEngine e;
+    CHECK(e.add(1, Side::Buy, MIN_PX, minQty).err == Err::None);
+    CHECK(e.add(2, Side::Sell, MAX_PX, maxQty).err == Err::None);
+    CHECK(e.add(UINT64_MAX, Side::Sell, MAX_PX, maxQty).err==Err::None);
+    CHECK(e.cancel(UINT64_MAX).removed == maxQty);
+
+    // big level total, wouldnt fit in 32 bits
+    MatchingEngine e2;
+    for(OrderId i=1;i<=5;i++) e2.add(i, Side::Buy, 500, maxQty);
+    auto s = e2.snapshot();
+    CHECK(s.size()==1 && s[0].total == 5*maxQty);
+
+    // max size trade
+    auto r = e2.add(10, Side::Sell, 500, maxQty);
+    CHECK(r.trades.size()==1 && r.trades[0].qty == maxQty && r.left==0);
+}
+
 int main() {
     test_sanity();
     test_limits();
@@ -339,6 +358,7 @@ int main() {
     t11_cancel_after_partial();
     t12_t13_cancel_ids();
     exC_followup();
+    t16_bounds();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";
