@@ -64,6 +64,34 @@ std::vector<Trade> OrderBook::match(Order in)
     return trades;
 }
 
+// dumb linear scan over everything. O(n) but easy to get right first
+Qty OrderBook::cancel(OrderId id)
+{
+    for(auto lv = bids.begin(); lv != bids.end(); ++lv) {
+        auto &q = lv->second;
+        for(auto it = q.begin(); it!=q.end(); ++it) {
+            if(it->id == id) {
+                Qty r = it->qty;
+                q.erase(it);
+                if(q.empty()) bids.erase(lv);
+                return r;   // returning straight away so the dead iterators never get used
+            }
+        }
+    }
+    for(auto lv = asks.begin(); lv != asks.end(); ++lv) {
+        auto &q = lv->second;
+        for(auto it = q.begin(); it!=q.end(); ++it) {
+            if(it->id == id) {
+                Qty r = it->qty;
+                q.erase(it);
+                if(q.empty()) asks.erase(lv);
+                return r;
+            }
+        }
+    }
+    return 0;
+}
+
 std::vector<Lvl> OrderBook::snapshot() const
 {
     std::vector<Lvl> out;

@@ -23,6 +23,19 @@ AddRes MatchingEngine::add(OrderId id, Side s, Px px, Qty q)
     return r;
 }
 
+CxlRes MatchingEngine::cancel(OrderId id)
+{
+    CxlRes r;
+    if(id == 0) { r.err = Err::INVALID_VALUE; return r; }
+    //if(!seen.count(id)) { r.err = Err::NOT_FOUND; return r; }
+    // ^ pointless, the book scan already covers it
+
+    r.removed = book.cancel(id);
+    if(r.removed == 0) r.err = Err::NOT_FOUND;
+    // id stays in seen, cancelled ids cant come back
+    return r;
+}
+
 void MatchingEngine::reset() {
     book = OrderBook();
     seen.clear();

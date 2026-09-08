@@ -232,6 +232,85 @@ void eng_reset() {
     CHECK(e.add(7, Side::Buy, 100, 1).err == Err::None);
 }
 
+// ---- cancel ----
+
+// T01
+void t01_empty() {
+    MatchingEngine e;
+    CHECK(e.snapshot().empty());
+    CHECK(e.cancel(5).err==Err::NOT_FOUND);
+}
+
+// T09 - kill head/mid/tail, rest keep order
+void t09_cancel_positions() {
+    for(int which=0; which<3; which++) {
+        MatchingEngine e;
+        e.add(1, Side::Sell, 10000, 1);
+        e.add(2, Side::Sell, 10000, 1);
+        e.add(3, Side::Sell, 10000, 1);
+        e.add(4, Side::Sell, 10000, 1);
+
+        OrderId kill = (which==0) ? 1 : (which==1 ? 3 : 4);
+        auto c = e.cancel(kill);
+        CHECK(c.err==Err::None && c.removed==1);
+
+        auto r = e.add(99, Side::Buy, 10000, 3);
+        CHECK(r.trades.size()==3);
+        OrderId prev=0;
+        for (auto& t : r.trades) {
+            CHECK(t.maker != kill);
+            CHECK(t.maker > prev);   // still in arrival order
+            prev = t.maker;
+        }
+    }
+}
+
+// T10
+void t10_cancel_last_at_lvl() {
+    MatchingEngine e;
+    e.add(1, Side::Buy, 9000, 5);
+    e.add(2, Side::Buy, 9100, 5);
+    e.cancel(2);
+    auto s = e.snapshot();
+    CHECK(s.size()==1 && s[0].px==9000);
+}
+
+// T11 + example A
+void t11_cancel_after_partial() {
+    MatchingEngine e;
+    e.add(1001, Side::Sell, 10000, 10);
+    e.add(1002, Side::Buy, 10000, 6);
+    auto s=e.snapshot();
+    CHECK(s.size()==1 && s[0].total==4);
+    auto c = e.cancel(1001);
+    CHECK(c.err==Err::None && c.removed==4);
+    CHECK(e.snapshot().empty());
+}
+
+// T12 cancelled id cant be reused + T13 repeat cancel
+void t12_t13_cancel_ids() {
+    MatchingEngine e;
+    e.add(5, Side::Buy, 100, 3);
+    e.add(6, Side::Buy, 101, 2);
+    CHECK(e.cancel(5).removed==3);
+    CHECK(e.cancel(5).err == Err::NOT_FOUND);
+    CHECK(e.cancel(12345).err == Err::NOT_FOUND);
+    CHECK(e.add(5, Side::Buy, 100, 3).err==Err::DUPLICATE_ID);
+
+    auto s = e.snapshot();   // untouched by the failed ones
+    CHECK(s.size()==1 && s[0].px==101 && s[0].total==2);
+}
+
+// example C follow up
+void exC_followup() {
+    MatchingEngine e;
+    e.add(31, Side::Buy, 10005, 2);
+    e.add(32, Side::Buy, 10003, 4);
+    e.add(40, Side::Sell, 10004, 5);
+    CHECK(e.cancel(31).err == Err::NOT_FOUND);   // filled
+    CHECK(e.add(31, Side::Buy, 10000, 1).err == Err::DUPLICATE_ID);
+}
+
 int main() {
     test_sanity();
     test_limits();
@@ -253,6 +332,13 @@ int main() {
     eng_dup_ids();
     eng_invalid();
     eng_reset();
+
+    t01_empty();
+    t09_cancel_positions();
+    t10_cancel_last_at_lvl();
+    t11_cancel_after_partial();
+    t12_t13_cancel_ids();
+    exC_followup();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";

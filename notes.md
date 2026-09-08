@@ -11,4 +11,7 @@
 - MatchingEngine: owns book, seen set, seq counter. validates before touching anything
   seen = never reuse ids. NOT the same as "active", thats for cancel later
 
-next: cancel by id (just scan the book for now, index later)
+- cancel: linear scan of both sides, O(n orders). erase the level if it goes empty
+  T01 T09-T13 green
+
+next: boundary values T16, then invariant checker

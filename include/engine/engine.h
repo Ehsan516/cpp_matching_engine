@@ -13,9 +13,15 @@ struct AddRes {
     Qty left = 0;     // >0 means it rested
 };
 
+struct CxlRes {
+    Err err=Err::None;
+    Qty removed=0;
+};
+
 class MatchingEngine {
 public:
     AddRes add(OrderId id, Side s, Px px, Qty q);
+    CxlRes cancel(OrderId id);
     std::vector<Lvl> snapshot() const { return book.snapshot(); }
 
     void reset();
