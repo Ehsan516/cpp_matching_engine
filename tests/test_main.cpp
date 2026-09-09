@@ -330,6 +330,32 @@ void t16_bounds() {
     CHECK(r.trades.size()==1 && r.trades[0].qty == maxQty && r.left==0);
 }
 
+// tiny lcg, so the sequence is the same everywhere (std distributions arent)
+struct Rng {
+    std::uint64_t s;
+    std::uint64_t next() { s = s*6364136223846793005ULL + 1442695040888963407ULL; return s>>33; }
+    std::int64_t in(std::int64_t lo, std::int64_t hi) { return lo + (std::int64_t)(next() % (std::uint64_t)(hi-lo+1)); }
+};
+
+void invariants_random() {
+    MatchingEngine e;
+    Rng r{42};
+    OrderId nid=1;
+    int bad=0;
+    for(int i=0;i<2000;i++) {
+        int op = (int)r.in(0, 9);
+        if(op<7) {
+            Side sd = r.in(0,1) ? Side::Buy : Side::Sell;
+            e.add(nid++, sd, r.in(9990, 10010), r.in(1, 20));
+        } else {
+            e.cancel((OrderId)r.in(1, (std::int64_t)nid));
+        }
+        const char* why = e.check();
+        if(why) { std::cerr<<"step "<<i<<": "<<why<<"\n"; bad++; break; }
+    }
+    CHECK(bad==0);
+}
+
 int main() {
     test_sanity();
     test_limits();
@@ -359,6 +385,7 @@ int main() {
     t12_t13_cancel_ids();
     exC_followup();
     t16_bounds();
+    invariants_random();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";

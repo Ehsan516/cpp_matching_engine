@@ -2,6 +2,7 @@
 #include <limits>
 #include <stdexcept>
 #include <algorithm>
+#include <unordered_set>
 
 namespace eng {
 
@@ -90,6 +91,39 @@ Qty OrderBook::cancel(OrderId id)
         }
     }
     return 0;
+}
+
+const char* OrderBook::check() const
+{
+    std::unordered_set<OrderId> ids;
+
+    for(auto &kv : bids) {
+        if(kv.second.empty()) return "empty bid level";
+        std::uint64_t lastSeq=0;
+        for(auto& o : kv.second) {
+            if(o.qty<=0) return "non positive qty resting";
+            if(o.side!=Side::Buy || o.px!=kv.first) return "bid in wrong place";
+            if(o.seq<=lastSeq) return "fifo broken";
+            lastSeq=o.seq;
+            if(!ids.insert(o.id).second) return "dup id in book";
+        }
+    }
+    for(auto &kv : asks) {
+        if(kv.second.empty()) return "empty ask level";
+        std::uint64_t lastSeq=0;
+        for(auto& o : kv.second) {
+            if(o.qty<=0) return "non positive qty resting";
+            if(o.side!=Side::Sell || o.px!=kv.first) return "ask in wrong place";
+            if(o.seq<=lastSeq) return "fifo broken";
+            lastSeq=o.seq;
+            if(!ids.insert(o.id).second) return "dup id in book";
+        }
+    }
+    // price order is the map's job, no point re-checking that
+
+    if(!bids.empty() && !asks.empty() && bestBid() >= bestAsk())
+        return "crossed book";
+    return nullptr;
 }
 
 std::vector<Lvl> OrderBook::snapshot() const

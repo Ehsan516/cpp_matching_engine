@@ -16,4 +16,7 @@
 
 - T16 bounds ok, UINT64_MAX id works
 
-next: invariant checker
+- check(): qty>0, no empty lvls, ids unique, fifo seq, not crossed. random 2000 ops seed 42 passes
+  own LCG instead of std::uniform_int_distribution bc that differs between compilers
+
+next: quantity conservation in the random test

@@ -26,6 +26,8 @@ public:
 
     std::vector<Lvl> snapshot() const;  // bids high->low then asks low->high
 
+    const char* check() const;   // nullptr if fine, else what broke. slow, tests only
+
 private:
     std::map<Px, std::list<Order>> asks;   // lowest px first
     std::map<Px, std::list<Order>, std::greater<Px>> bids;

@@ -23,6 +23,7 @@ public:
     AddRes add(OrderId id, Side s, Px px, Qty q);
     CxlRes cancel(OrderId id);
     std::vector<Lvl> snapshot() const { return book.snapshot(); }
+    const char* check() const {return book.check();}
 
     void reset();
 
