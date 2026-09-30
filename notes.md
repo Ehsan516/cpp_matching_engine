@@ -22,4 +22,6 @@
 - conservation check: accepted = resting + cancelled + 2*traded, every step. random mix now has
   rejects too (qty 0 + reused ids) and those dont count
 
-next: T17 atomicity test, then start on the parser
+- T17: rejected adds/cancels dont touch book or seen. BAD_COMMAND one comes w/ the parser
+
+next: parser. line -> command struct, BAD_COMMAND vs INVALID_VALUE

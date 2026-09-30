@@ -330,6 +330,41 @@ void t16_bounds() {
     CHECK(r.trades.size()==1 && r.trades[0].qty == maxQty && r.left==0);
 }
 
+static bool sameBook(const std::vector<Lvl>& a, const std::vector<Lvl>& b) {
+    if(a.size()!=b.size()) return false;
+    for(size_t i=0;i<a.size();i++)
+        if(a[i].side!=b[i].side || a[i].px!=b[i].px || a[i].total!=b[i].total) return false;
+    return true;
+}
+
+// T17 rejected stuff leaves everything alone
+void t17_atomic() {
+    MatchingEngine e;
+    e.add(1, Side::Sell, 10000, 5);
+    e.add(2, Side::Buy, 9990, 3);
+    auto before = e.snapshot();
+
+    // these would all cross if they got through
+    CHECK(e.add(1, Side::Buy, 10000, 5).err == Err::DUPLICATE_ID);
+    CHECK(e.add(2, Side::Sell, 9990, 3).err == Err::DUPLICATE_ID);
+    CHECK(e.add(3, Side::Buy, 10000, 0).err == Err::INVALID_VALUE);
+    CHECK(e.add(4, Side::Buy, MAX_PX+1, 5).err == Err::INVALID_VALUE);
+    CHECK(e.add(0, Side::Buy, 10000, 5).err == Err::INVALID_VALUE);
+    CHECK(e.cancel(77).err == Err::NOT_FOUND);
+    CHECK(e.cancel(0).err == Err::INVALID_VALUE);
+
+    CHECK(sameBook(before, e.snapshot()));
+    CHECK(e.check()==nullptr);
+
+    // seen ids: 3 + 4 never got reserved, 1 + 2 still are
+    CHECK(e.add(3, Side::Buy, 9000, 1).err == Err::None);
+    CHECK(e.add(4, Side::Buy, 9000, 1).err == Err::None);
+    CHECK(e.add(1, Side::Buy, 9000, 1).err == Err::DUPLICATE_ID);
+
+    // dup + bad value at once -> value wins (precedence)
+    CHECK(e.add(2, Side::Buy, 9000, 0).err == Err::INVALID_VALUE);
+}
+
 // tiny lcg, so the sequence is the same everywhere (std distributions arent)
 struct Rng {
     std::uint64_t s;
@@ -409,6 +444,7 @@ int main() {
     t12_t13_cancel_ids();
     exC_followup();
     t16_bounds();
+    t17_atomic();
     invariants_random();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
