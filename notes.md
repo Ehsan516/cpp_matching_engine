@@ -19,4 +19,7 @@
 - check(): qty>0, no empty lvls, ids unique, fifo seq, not crossed. random 2000 ops seed 42 passes
   own LCG instead of std::uniform_int_distribution bc that differs between compilers
 
-next: quantity conservation in the random test
+- conservation check: accepted = resting + cancelled + 2*traded, every step. random mix now has
+  rejects too (qty 0 + reused ids) and those dont count
+
+next: T17 atomicity test, then start on the parser

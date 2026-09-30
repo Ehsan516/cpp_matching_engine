@@ -337,23 +337,47 @@ struct Rng {
     std::int64_t in(std::int64_t lo, std::int64_t hi) { return lo + (std::int64_t)(next() % (std::uint64_t)(hi-lo+1)); }
 };
 
+static Qty resting_total(const MatchingEngine& e) {
+    Qty t=0;
+    for (auto &l : e.snapshot()) t+=l.total;
+    return t;
+}
+
 void invariants_random() {
     MatchingEngine e;
     Rng r{42};
     OrderId nid=1;
     int bad=0;
+    Qty accepted=0, cancelled=0, traded=0;
+    int rejects=0;
+
     for(int i=0;i<2000;i++) {
         int op = (int)r.in(0, 9);
         if(op<7) {
             Side sd = r.in(0,1) ? Side::Buy : Side::Sell;
-            e.add(nid++, sd, r.in(9990, 10010), r.in(1, 20));
+            Qty q = r.in(0, 20);   // 0 sometimes on purpose -> rejected
+            OrderId id = (op==6 && nid>1) ? (OrderId)r.in(1, (std::int64_t)nid-1) : nid++;
+            // ^ op 6 reuses an old id, should always bounce
+            auto res = e.add(id, sd, r.in(9990, 10010), q);
+            if(res.err==Err::None) {
+                accepted += q;
+                for(auto &t : res.trades) traded += t.qty;
+            } else rejects++;
         } else {
-            e.cancel((OrderId)r.in(1, (std::int64_t)nid));
+            auto c = e.cancel((OrderId)r.in(1, (std::int64_t)nid));
+            cancelled += c.removed;
         }
+
         const char* why = e.check();
         if(why) { std::cerr<<"step "<<i<<": "<<why<<"\n"; bad++; break; }
+
+        // every trade eats qty from both sides, hence 2x
+        if(accepted != resting_total(e) + cancelled + 2*traded) {
+            std::cerr<<"step "<<i<<": qty not conserved\n"; bad++; break;
+        }
     }
     CHECK(bad==0);
+    CHECK(traded > 0 && cancelled > 0 && rejects > 0);   // make sure the mix actually did stuff
 }
 
 int main() {
