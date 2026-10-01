@@ -24,4 +24,9 @@
 
 - T17: rejected adds/cancels dont touch book or seen. BAD_COMMAND one comes w/ the parser
 
-next: parser. line -> command struct, BAD_COMMAND vs INVALID_VALUE
+- parser: tokens split on whitespace. number = -?[0-9]+ only, else BAD_COMMAND
+  negative or too big for uint64 = INVALID_VALUE (its an integer, just not allowed)
+  decided "+5" is BAD_COMMAND, from_chars doesnt take + and i dont want to either
+  all tokens checked for shape first, then ranges -> precedence works out
+
+next: formatter + wire into main

@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(include)
 
-add_library(engine src/book.cpp src/engine.cpp)
+add_library(engine src/book.cpp src/engine.cpp src/parser.cpp)
 
 add_executable(matcher app/main.cpp)
 target_link_libraries(matcher engine)

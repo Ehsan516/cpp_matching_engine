@@ -3,6 +3,7 @@
 #include "engine/order.h"
 #include "engine/book.h"
 #include "engine/engine.h"
+#include "engine/parser.h"
 
 using namespace eng;
 
@@ -365,6 +366,66 @@ void t17_atomic() {
     CHECK(e.add(2, Side::Buy, 9000, 0).err == Err::INVALID_VALUE);
 }
 
+// ---- parser ----
+
+static Err perr(const char* s) { return parse_line(s).err; }
+
+void parse_ok() {
+    auto p = parse_line("BUY 1002 10000 6");
+    CHECK(p.err==Err::None && p.cmd.type==CmdT::Add && p.cmd.side==Side::Buy);
+    CHECK(p.cmd.id==1002 && p.cmd.px==10000 && p.cmd.qty==6);
+
+    p = parse_line("  SELL\t7   9999 1\r");    // weird whitespace + windows line end
+    CHECK(p.err==Err::None && p.cmd.side==Side::Sell && p.cmd.qty==1);
+
+    p = parse_line("CANCEL 18446744073709551615");   // uint64 max
+    CHECK(p.err==Err::None && p.cmd.type==CmdT::Cancel && p.cmd.id==UINT64_MAX);
+
+    CHECK(parse_line("BOOK").cmd.type == CmdT::Book);
+    CHECK(parse_line("").cmd.type == CmdT::Skip);
+    CHECK(parse_line("    ").cmd.type==CmdT::Skip);
+    CHECK(parse_line("  # hello BUY 1 2 3").cmd.type == CmdT::Skip);
+    CHECK(parse_line("BUY 1 1 1").err==Err::None);
+    CHECK(parse_line("SELL 1 1000000000 1000000000").err==Err::None);
+}
+
+// T14
+void t14_bad_numbers() {
+    CHECK(perr("BUY 1 0 5") == Err::INVALID_VALUE);
+    CHECK(perr("BUY 1 100 0") == Err::INVALID_VALUE);
+    CHECK(perr("BUY 0 100 5") == Err::INVALID_VALUE);
+    CHECK(perr("BUY 1 -100 5") == Err::INVALID_VALUE);
+    CHECK(perr("BUY -1 100 5") == Err::INVALID_VALUE);
+    CHECK(perr("SELL 1 1000000001 5") == Err::INVALID_VALUE);
+    CHECK(perr("SELL 1 100 1000000001") == Err::INVALID_VALUE);
+    CHECK(perr("CANCEL 18446744073709551616") == Err::INVALID_VALUE);   // uint64 max + 1
+    CHECK(perr("BUY 1 99999999999999999999999 5") == Err::INVALID_VALUE);
+    CHECK(perr("CANCEL 0") == Err::INVALID_VALUE);
+
+    // partial / not numbers
+    CHECK(perr("BUY 1 100abc 5") == Err::BAD_COMMAND);
+    CHECK(perr("BUY 1 10.5 5") == Err::BAD_COMMAND);
+    CHECK(perr("BUY 1 +100 5") == Err::BAD_COMMAND);
+    CHECK(perr("BUY 1 - 5") == Err::BAD_COMMAND);
+    CHECK(perr("BUY x 100 5") == Err::BAD_COMMAND);
+    CHECK(perr("CANCEL 0x10") == Err::BAD_COMMAND);
+
+    // not-a-number beats out of range even if the range one is first
+    CHECK(perr("BUY 0 abc 5") == Err::BAD_COMMAND);
+}
+
+// T15
+void t15_malformed() {
+    CHECK(perr("BUY 1 100") == Err::BAD_COMMAND);
+    CHECK(perr("BUY 1 100 5 6") == Err::BAD_COMMAND);
+    CHECK(perr("CANCEL") == Err::BAD_COMMAND);
+    CHECK(perr("CANCEL 1 2") == Err::BAD_COMMAND);
+    CHECK(perr("BOOK now") == Err::BAD_COMMAND);
+    CHECK(perr("buy 1 100 5") == Err::BAD_COMMAND);   // case sensitive
+    CHECK(perr("AMEND 1 100 5") == Err::BAD_COMMAND);
+    CHECK(perr("BUY 1 100 5 # inline comment") == Err::BAD_COMMAND);
+}
+
 // tiny lcg, so the sequence is the same everywhere (std distributions arent)
 struct Rng {
     std::uint64_t s;
@@ -445,6 +506,9 @@ int main() {
     exC_followup();
     t16_bounds();
     t17_atomic();
+    parse_ok();
+    t14_bad_numbers();
+    t15_malformed();
     invariants_random();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
