@@ -4,6 +4,7 @@
 #include "engine/book.h"
 #include "engine/engine.h"
 #include "engine/parser.h"
+#include "engine/format.h"
 
 using namespace eng;
 
@@ -426,6 +427,34 @@ void t15_malformed() {
     CHECK(perr("BUY 1 100 5 # inline comment") == Err::BAD_COMMAND);
 }
 
+// ---- formatter ----
+
+// example A, exact text
+void fmt_exA() {
+    MatchingEngine e;
+    CHECK(fmt_add(1001, e.add(1001, Side::Sell, 10000, 10)) == "ACK 1001\nREST 1001 10\n");
+    CHECK(fmt_add(1002, e.add(1002, Side::Buy, 10000, 6)) ==
+          "ACK 1002\nTRADE 1001 1002 10000 6\nDONE 1002\n");
+    CHECK(fmt_book(e.snapshot()) == "BOOK_BEGIN\nASK 10000 4\nBOOK_END\n");
+    CHECK(fmtCancel(1001, e.cancel(1001)) == "CANCELLED 1001 4\n");
+    CHECK(fmt_book(e.snapshot()) == "BOOK_BEGIN\nBOOK_END\n");
+}
+
+void fmt_errors_and_book() {
+    MatchingEngine e;
+    CHECK(fmtCancel(9, e.cancel(9)) == "ERROR NOT_FOUND\n");
+    e.add(1, Side::Buy, 100, 1);
+    CHECK(fmt_add(1, e.add(1, Side::Buy, 100, 1)) == "ERROR DUPLICATE_ID\n");
+    CHECK(fmt_add(2, e.add(2, Side::Buy, 100, 0)) == "ERROR INVALID_VALUE\n");
+    CHECK(fmt_err(Err::BAD_COMMAND) == "ERROR BAD_COMMAND\n");
+
+    e.add(2, Side::Buy, 101, 2);
+    e.add(3, Side::Sell, 105, 3);
+    e.add(4, Side::Sell, 103, 4);
+    CHECK(fmt_book(e.snapshot()) ==
+          "BOOK_BEGIN\nBID 101 2\nBID 100 1\nASK 103 4\nASK 105 3\nBOOK_END\n");
+}
+
 // tiny lcg, so the sequence is the same everywhere (std distributions arent)
 struct Rng {
     std::uint64_t s;
@@ -509,6 +538,8 @@ int main() {
     parse_ok();
     t14_bad_numbers();
     t15_malformed();
+    fmt_exA();
+    fmt_errors_and_book();
     invariants_random();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }

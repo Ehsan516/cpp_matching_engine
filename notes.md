@@ -29,4 +29,6 @@
   decided "+5" is BAD_COMMAND, from_chars doesnt take + and i dont want to either
   all tokens checked for shape first, then ranges -> precedence works out
 
-next: formatter + wire into main
+- formatter: plain std::string building, no streams. example A matches byte for byte
+
+next: wire parser+engine+formatter into main, stdin + --input, exit codes
