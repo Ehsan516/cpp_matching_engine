@@ -31,4 +31,7 @@
 
 - formatter: plain std::string building, no streams. example A matches byte for byte
 
-next: wire parser+engine+formatter into main, stdin + --input, exit codes
+- main wired up. stdin or --input file. stdout = results only, stderr = "line N: ERROR ..."
+  exit 0 ok / 1 any reject / 2 usage or file problem
+
+next: fixtures/ for examples A B C + ctest runs the binary and diffs output
