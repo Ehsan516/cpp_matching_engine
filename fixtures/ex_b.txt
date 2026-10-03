@@ -1,0 +1,6 @@
+# B: fifo + multiple levels
+SELL 11 10000 4
+SELL 12 10000 5
+SELL 13 10002 3
+BUY 20 10002 10
+BOOK

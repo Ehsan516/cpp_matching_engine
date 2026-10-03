@@ -1,0 +1,7 @@
+# C: resting price + limit protection, then the follow up
+BUY 31 10005 2
+BUY 32 10003 4
+SELL 40 10004 5
+BOOK
+CANCEL 31
+BUY 31 10000 1

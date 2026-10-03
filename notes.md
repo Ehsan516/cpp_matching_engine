@@ -34,4 +34,7 @@
 - main wired up. stdin or --input file. stdout = results only, stderr = "line N: ERROR ..."
   exit 0 ok / 1 any reject / 2 usage or file problem
 
-next: fixtures/ for examples A B C + ctest runs the binary and diffs output
+- fixtures A B C + .expected. ctest runs matcher via a cmake -P script (no bash/diff needed),
+  checks --input and stdin give the same thing + exit code
+
+next: error fixture (all the reject types through the cli), T18 replay

@@ -16,3 +16,16 @@ enable_testing()
 add_executable(tests  tests/test_main.cpp)
 target_link_libraries(tests engine)
 add_test(NAME unit COMMAND tests)
+
+# cli fixtures. name / exit code
+foreach(fx  example:0  ex_b:0  ex_c:1)
+    string(REPLACE ":" ";" parts ${fx})
+    list(GET parts 0 nm)
+    list(GET parts 1 code)
+    add_test(NAME fx_${nm}
+        COMMAND ${CMAKE_COMMAND} -DBIN=$<TARGET_FILE:matcher>
+            -DIN=${CMAKE_SOURCE_DIR}/fixtures/${nm}.txt
+            -DEXP=${CMAKE_SOURCE_DIR}/fixtures/${nm}.expected
+            -DCODE=${code}
+            -P ${CMAKE_SOURCE_DIR}/tests/run_fixture.cmake)
+endforeach()

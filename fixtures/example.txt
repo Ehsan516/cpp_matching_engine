@@ -1,0 +1,6 @@
+# example A - partial fill then cancel
+SELL 1001 10000 10
+BUY 1002 10000 6
+BOOK
+CANCEL 1001
+BOOK
