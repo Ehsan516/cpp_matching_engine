@@ -37,4 +37,7 @@
 - fixtures A B C + .expected. ctest runs matcher via a cmake -P script (no bash/diff needed),
   checks --input and stdin give the same thing + exit code
 
-next: error fixture (all the reject types through the cli), T18 replay
+- errors fixture through the cli, T18 replay (same seed twice + after reset = identical text)
+  all T01-T18 covered now
+
+next: compiler warnings on properly in cmake, then sanitizer build

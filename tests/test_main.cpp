@@ -505,6 +505,39 @@ void invariants_random() {
     CHECK(traded > 0 && cancelled > 0 && rejects > 0);   // make sure the mix actually did stuff
 }
 
+// T18 same input twice -> same output + same book
+// builds the whole output text like the cli would and compares
+static std::string replay(MatchingEngine &e, std::uint64_t seed) {
+    Rng r{seed};
+    std::string out;
+    for(int i=0;i<3000;i++) {
+        int op = (int)r.in(0, 9);
+        OrderId id = (OrderId)r.in(1, 2500);   // collides sometimes, thats fine
+        if(op < 7)
+            out += fmt_add(id, e.add(id, r.in(0,1) ? Side::Buy : Side::Sell, r.in(9980, 10020), r.in(1, 30)));
+        else if(op < 9)
+            out += fmtCancel(id, e.cancel(id));
+        else
+            out += fmt_book(e.snapshot());
+    }
+    out += fmt_book(e.snapshot());
+    return out;
+}
+
+void t18_replay() {
+    MatchingEngine a, b;
+    std::string ra = replay(a, 7);
+    std::string rb = replay(b, 7);
+    CHECK(ra == rb);
+    CHECK(ra.size() > 1000);   // sanity, it did something
+
+    // reset has to give the same as a fresh engine
+    a.reset();
+    CHECK(replay(a, 7) == ra);
+
+    CHECK(replay(b, 8) != ra);   // different seed (and b not reset) should differ
+}
+
 int main() {
     test_sanity();
     test_limits();
@@ -541,6 +574,7 @@ int main() {
     fmt_exA();
     fmt_errors_and_book();
     invariants_random();
+    t18_replay();
 
     if(fails) { std::cerr<<fails<<" failed\n"; return 1; }
     std::cout<<"all ok\n";
