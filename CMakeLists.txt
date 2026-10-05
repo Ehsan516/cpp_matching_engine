@@ -11,6 +11,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # add_compile_options(-Werror)   too annoying while hacking, maybe for CI
 endif()
 
+option(SANITIZE "asan + ubsan" OFF)
+if(SANITIZE)
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all)
+    add_link_options(-fsanitize=address,undefined)
+    # ^ no-recover so ubsan actually fails the test instead of just printing
+endif()
+
 add_library(engine src/book.cpp src/engine.cpp src/parser.cpp src/format.cpp)
 
 add_executable(matcher app/main.cpp)

@@ -13,6 +13,13 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+sanitizer build (asan + ubsan):
+
+```
+cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Debug -DSANITIZE=ON
+cmake --build build-asan && ctest --test-dir build-asan --output-on-failure
+```
+
 ## run
 
 ```

@@ -42,4 +42,7 @@
 
 - warnings in cmakelists now instead of me passing CXX_FLAGS by hand. clean build = 0 warnings
 
-next: sanitizer option (asan + ubsan)
+- -DSANITIZE=ON for asan+ubsan. full suite clean under it
+  (sanitizers catch memory bugs/UB, they dont prove the matching is right - thats what tests are for)
+
+next: github actions CI (debug + sanitizer), then M4 is done
