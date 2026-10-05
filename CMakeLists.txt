@@ -6,6 +6,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(include)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wall -Wextra -Wpedantic)
+    # add_compile_options(-Werror)   too annoying while hacking, maybe for CI
+endif()
+
 add_library(engine src/book.cpp src/engine.cpp src/parser.cpp src/format.cpp)
 
 add_executable(matcher app/main.cpp)

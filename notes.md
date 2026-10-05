@@ -40,4 +40,6 @@
 - errors fixture through the cli, T18 replay (same seed twice + after reset = identical text)
   all T01-T18 covered now
 
-next: compiler warnings on properly in cmake, then sanitizer build
+- warnings in cmakelists now instead of me passing CXX_FLAGS by hand. clean build = 0 warnings
+
+next: sanitizer option (asan + ubsan)
