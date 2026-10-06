@@ -8,7 +8,7 @@ include_directories(include)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
-    # add_compile_options(-Werror)   too annoying while hacking, maybe for CI
+    # add_compile_options(-Werror)   too annoying while hacking. CI passes it instead
 endif()
 
 option(SANITIZE "asan + ubsan" OFF)

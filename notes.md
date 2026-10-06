@@ -45,4 +45,7 @@
 - -DSANITIZE=ON for asan+ubsan. full suite clean under it
   (sanitizers catch memory bugs/UB, they dont prove the matching is right - thats what tests are for)
 
-next: github actions CI (debug + sanitizer), then M4 is done
+- CI: github actions, ubuntu, debug + asan jobs, -Werror only there. no perf numbers in CI
+  M4 done
+
+next: M5. bench/ executable + workload generator

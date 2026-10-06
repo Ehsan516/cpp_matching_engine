@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cfg: [debug, asan]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: configure
+        run: |
+          if [ "${{ matrix.cfg }}" = "asan" ]; then EXTRA="-DSANITIZE=ON"; else EXTRA=""; fi
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-Werror" $EXTRA
+
+      - name: build
+        run: cmake --build build -j
+
+      - name: test
+        run: ctest --test-dir build --output-on-failure
+
+      # no benchmarks here on purpose, shared runners are too noisy to mean anything
