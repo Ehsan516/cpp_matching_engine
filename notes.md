@@ -48,4 +48,7 @@
 - CI: github actions, ubuntu, debug + asan jobs, -Werror only there. no perf numbers in CI
   M4 done
 
-next: M5. bench/ executable + workload generator
+- bench/: 4 workloads (rest, match, cancel, mixed), fixed seed, fnv checksum of the input
+  preload kept separate from the timed cmds. no timing yet, just checks outcomes look sane
+
+next: timing. steady_clock around the whole batch, warmup, 5+ trials, median

@@ -24,6 +24,9 @@ add_executable(matcher app/main.cpp)
 target_link_libraries(matcher engine)
 # set_target_properties(matcher PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+add_executable(bench bench/bench.cpp)
+target_link_libraries(bench engine)
+
 enable_testing()
 add_executable(tests  tests/test_main.cpp)
 target_link_libraries(tests engine)
