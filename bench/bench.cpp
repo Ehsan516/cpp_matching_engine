@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <algorithm>
 #include "engine/engine.h"
 
 using namespace eng;
@@ -136,25 +138,61 @@ static Out feed(MatchingEngine& e, const std::vector<BCmd>& v) {
     return o;
 }
 
+// one trial. reset + preload happen BEFORE the clock starts
+// timed = engine add/cancel incl matching + building the result vectors. no parsing, no printing
+static double trial(MatchingEngine& e, const Workload& w, Out& o) {
+    e.reset();
+    feed(e, w.pre);
+    auto t0 = std::chrono::steady_clock::now();
+    o = feed(e, w.cmds);
+    auto t1 = std::chrono::steady_clock::now();
+    return std::chrono::duration<double, std::milli>(t1 - t0).count();
+}
+
+static bool same(const Out& a, const Out& b) {
+    return a.ok==b.ok && a.rej==b.rej && a.trades==b.trades && a.tradedQty==b.tradedQty;
+}
+
 int main(int argc, char** argv)
 {
     size_t n = 10000;
     std::uint64_t seed = 1;
+    int trials = 5;
     for(int i=1;i<argc;i++) {
         if(!std::strcmp(argv[i], "--n") && i+1<argc) n = std::strtoull(argv[++i], nullptr, 10);
         else if(!std::strcmp(argv[i], "--seed") && i+1<argc) seed = std::strtoull(argv[++i], nullptr, 10);
-        else { std::fprintf(stderr, "usage: bench [--n N] [--seed S]\n"); return 2; }
+        else if(!std::strcmp(argv[i], "--trials") && i+1<argc) trials = std::atoi(argv[++i]);
+        else { std::fprintf(stderr, "usage: bench [--n N] [--seed S] [--trials T]\n"); return 2; }
     }
+    if(n<2 || trials<1) { std::fprintf(stderr, "n>=2, trials>=1\n"); return 2; }
 
     std::vector<Workload> ws = { gen_rest(n, seed), gen_match(n, seed), gen_cancel(n, seed), gen_mixed(n, seed) };
 
-    std::printf("n=%zu seed=%llu\n", n, (unsigned long long)seed);
+    std::printf("n=%zu seed=%llu trials=%d (+1 warmup)\n", n, (unsigned long long)seed, trials);
+    std::printf("%-7s %8s %8s %16s %10s %10s %10s %12s %7s %6s %7s\n",
+        "work", "pre", "cmds", "cksum", "median_ms", "min_ms", "max_ms", "cmds/s", "ok", "rej", "trades");
+
+    std::uint64_t sink = 0;
     for(auto &w : ws) {
         MatchingEngine e;
-        feed(e, w.pre);
-        Out o = feed(e, w.cmds);
-        std::printf("%-7s pre=%-7zu cmds=%-7zu cksum=%016llx  ok=%zu rej=%zu trades=%zu\n",
-            w.name.c_str(), w.pre.size(), w.cmds.size(), (unsigned long long)cksum(w), o.ok, o.rej, o.trades);
+        Out first, o;
+        trial(e, w, first);   // warmup, thrown away
+
+        std::vector<double> ms;
+        for(int t=0;t<trials;t++) {
+            ms.push_back(trial(e, w, o));
+            if(!same(o, first)) { std::fprintf(stderr, "%s: trial %d gave different results??\n", w.name.c_str(), t); return 1; }
+            sink += o.trades + (std::uint64_t)o.tradedQty;
+        }
+        std::sort(ms.begin(), ms.end());
+        double med = (ms.size()%2) ? ms[ms.size()/2] : (ms[ms.size()/2-1] + ms[ms.size()/2]) / 2;
+        // ^ even count -> avg of the middle two
+
+        std::printf("%-7s %8zu %8zu %016llx %10.3f %10.3f %10.3f %12.0f %7zu %6zu %7zu\n",
+            w.name.c_str(), w.pre.size(), w.cmds.size(), (unsigned long long)cksum(w),
+            med, ms.front(), ms.back(), w.cmds.size() / (med/1000.0), o.ok, o.rej, o.trades);
     }
+    std::printf("sink=%llu\n", (unsigned long long)sink);
+    // ^ printing it so the compiler cant decide the work was pointless
     return 0;
 }

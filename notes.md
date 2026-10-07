@@ -51,4 +51,8 @@
 - bench/: 4 workloads (rest, match, cancel, mixed), fixed seed, fnv checksum of the input
   preload kept separate from the timed cmds. no timing yet, just checks outcomes look sane
 
-next: timing. steady_clock around the whole batch, warmup, 5+ trials, median
+- timing: reset + preload outside the clock, steady_clock around the whole batch, 1 warmup,
+  --trials (default 5), median/min/max. every trial has to give identical counts or it bails
+  sink printed at the end so the work cant get optimised away
+
+next: release build dir + record environment, then real baseline numbers
