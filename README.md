@@ -30,7 +30,7 @@ cmake --build build-release
 ./build-release/bench --n 100000 --seed 1 --trials 5
 ```
 
-prints compiler / flags / commit / cpu first so results can be traced back.
+prints compiler / flags / commit / cpu first so results can be traced back. results + method in [docs/bench.md](docs/bench.md).
 
 ## run
 

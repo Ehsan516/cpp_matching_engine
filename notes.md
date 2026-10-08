@@ -58,4 +58,7 @@
 - bench prints compiler, flags, build type, commit, os, cpu. warns loudly on debug/asan builds
   build-release/ is its own dir so i dont mix them up
 
-next: real baseline numbers -> docs/bench.md
+- baseline in docs/bench.md @ ead34ed. cancel 100k = ~97s (!!), linear scan is O(n) per cancel
+  rest ~5M cmds/s, match ~3.8M cmds/s. mixed slow bc of its cancels
+
+next: tidy the copy pasted buy/sell loops before touching cancel, so the index only has to go in once
