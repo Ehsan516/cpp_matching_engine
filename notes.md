@@ -55,4 +55,7 @@
   --trials (default 5), median/min/max. every trial has to give identical counts or it bails
   sink printed at the end so the work cant get optimised away
 
-next: release build dir + record environment, then real baseline numbers
+- bench prints compiler, flags, build type, commit, os, cpu. warns loudly on debug/asan builds
+  build-release/ is its own dir so i dont mix them up
+
+next: real baseline numbers -> docs/bench.md

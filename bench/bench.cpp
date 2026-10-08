@@ -5,9 +5,49 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
+#include <fstream>
 #include "engine/engine.h"
+#ifdef __linux__
+#include <sys/utsname.h>
+#endif
 
 using namespace eng;
+
+#ifndef BENCH_CXX
+#define BENCH_CXX "?"
+#define BENCH_FLAGS "?"
+#define BENCH_BT "?"
+#define BENCH_SHA ""
+#endif
+
+static std::string cpu_name() {
+    std::ifstream f("/proc/cpuinfo");
+    std::string ln;
+    while(std::getline(f, ln))
+        if(ln.rfind("model name", 0)==0) {
+            auto p = ln.find(':');
+            if(p!=std::string::npos) return ln.substr(p+2);
+        }
+    return "unknown";
+}
+
+static void print_env() {
+    std::printf("compiler: %s\n", BENCH_CXX);
+    std::printf("build:    %s  flags: %s\n", BENCH_BT, BENCH_FLAGS);
+    std::printf("commit:   %s\n", std::strlen(BENCH_SHA) ? BENCH_SHA : "unknown");
+#ifdef __linux__
+    utsname u;
+    if(uname(&u)==0) std::printf("os:       %s %s %s\n", u.sysname, u.release, u.machine);
+#endif
+    std::printf("cpu:      %s\n", cpu_name().c_str());
+
+#ifndef NDEBUG
+    std::printf("!! asserts on / not a release build, numbers are not worth recording\n");
+#endif
+#ifdef BENCH_SAN
+    std::printf("!! sanitizers on, numbers are meaningless\n");
+#endif
+}
 
 // same lcg as the tests. std distributions arent portable so not using them
 struct Rng {
@@ -168,6 +208,7 @@ int main(int argc, char** argv)
 
     std::vector<Workload> ws = { gen_rest(n, seed), gen_match(n, seed), gen_cancel(n, seed), gen_mixed(n, seed) };
 
+    print_env();
     std::printf("n=%zu seed=%llu trials=%d (+1 warmup)\n", n, (unsigned long long)seed, trials);
     std::printf("%-7s %8s %8s %16s %10s %10s %10s %12s %7s %6s %7s\n",
         "work", "pre", "cmds", "cksum", "median_ms", "min_ms", "max_ms", "cmds/s", "ok", "rej", "trades");

@@ -27,6 +27,22 @@ target_link_libraries(matcher engine)
 add_executable(bench bench/bench.cpp)
 target_link_libraries(bench engine)
 
+# bake build info into bench so every result says what it came from
+# NOTE sha is grabbed at configure time, rerun cmake if you want it fresh
+string(TOUPPER "${CMAKE_BUILD_TYPE}" _bt)
+execute_process(COMMAND git describe --always --dirty
+    # ^ -dirty = uncommitted changes, so that result cant be reproduced from the sha alone
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_SHA OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+target_compile_definitions(bench PRIVATE
+    BENCH_CXX="${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}"
+    BENCH_FLAGS="${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_bt}}"
+    BENCH_BT="${CMAKE_BUILD_TYPE}"
+    BENCH_SHA="${GIT_SHA}")
+if(SANITIZE)
+    target_compile_definitions(bench PRIVATE BENCH_SAN=1)
+endif()
+
 enable_testing()
 add_executable(tests  tests/test_main.cpp)
 target_link_libraries(tests engine)

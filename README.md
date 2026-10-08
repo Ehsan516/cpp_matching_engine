@@ -20,6 +20,18 @@ cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Debug -DSANITIZE=ON
 cmake --build build-asan && ctest --test-dir build-asan --output-on-failure
 ```
 
+## benchmark
+
+separate release build, dont benchmark the debug or asan ones:
+
+```
+cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release
+cmake --build build-release
+./build-release/bench --n 100000 --seed 1 --trials 5
+```
+
+prints compiler / flags / commit / cpu first so results can be traced back.
+
 ## run
 
 ```
