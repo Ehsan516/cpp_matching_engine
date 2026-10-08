@@ -64,4 +64,6 @@
 - buy/sell match loops -> one sweep() template. only reason its a template is the 2 map types
   tests + bench counts identical before/after
 
-next: same treatment for cancel + check()
+- cancel + check() deduped the same way. left snapshot() alone, its 5 lines
+
+next: the index. unordered_map id -> {side, px, list iterator}

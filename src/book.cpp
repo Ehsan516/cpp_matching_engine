@@ -60,60 +60,54 @@ std::vector<Trade> OrderBook::match(Order in)
     return trades;
 }
 
-// dumb linear scan over everything. O(n) but easy to get right first
-Qty OrderBook::cancel(OrderId id)
+// dumb linear scan over one side. O(n) but easy to get right first
+template<class M>
+static Qty scan_cancel(M &side, OrderId id)
 {
-    for(auto lv = bids.begin(); lv != bids.end(); ++lv) {
+    for(auto lv = side.begin(); lv != side.end(); ++lv) {
         auto &q = lv->second;
         for(auto it = q.begin(); it!=q.end(); ++it) {
             if(it->id == id) {
                 Qty r = it->qty;
                 q.erase(it);
-                if(q.empty()) bids.erase(lv);
+                if(q.empty()) side.erase(lv);
                 return r;   // returning straight away so the dead iterators never get used
-            }
-        }
-    }
-    for(auto lv = asks.begin(); lv != asks.end(); ++lv) {
-        auto &q = lv->second;
-        for(auto it = q.begin(); it!=q.end(); ++it) {
-            if(it->id == id) {
-                Qty r = it->qty;
-                q.erase(it);
-                if(q.empty()) asks.erase(lv);
-                return r;
             }
         }
     }
     return 0;
 }
 
+Qty OrderBook::cancel(OrderId id)
+{
+    Qty r = scan_cancel(bids, id);
+    if(r==0) r = scan_cancel(asks, id);
+    return r;
+}
+
+template<class M>
+static const char* check_side(const M &side, Side want, std::unordered_set<OrderId> &ids)
+{
+    for(auto &kv : side) {
+        if(kv.second.empty()) return "empty level";
+        std::uint64_t lastSeq=0;
+        for(auto& o : kv.second) {
+            if(o.qty<=0) return "non positive qty resting";
+            if(o.side!=want || o.px!=kv.first) return "order in wrong place";
+            if(o.seq<=lastSeq) return "fifo broken";
+            lastSeq=o.seq;
+            if(!ids.insert(o.id).second) return "dup id in book";
+        }
+    }
+    return nullptr;
+}
+
 const char* OrderBook::check() const
 {
     std::unordered_set<OrderId> ids;
-
-    for(auto &kv : bids) {
-        if(kv.second.empty()) return "empty bid level";
-        std::uint64_t lastSeq=0;
-        for(auto& o : kv.second) {
-            if(o.qty<=0) return "non positive qty resting";
-            if(o.side!=Side::Buy || o.px!=kv.first) return "bid in wrong place";
-            if(o.seq<=lastSeq) return "fifo broken";
-            lastSeq=o.seq;
-            if(!ids.insert(o.id).second) return "dup id in book";
-        }
-    }
-    for(auto &kv : asks) {
-        if(kv.second.empty()) return "empty ask level";
-        std::uint64_t lastSeq=0;
-        for(auto& o : kv.second) {
-            if(o.qty<=0) return "non positive qty resting";
-            if(o.side!=Side::Sell || o.px!=kv.first) return "ask in wrong place";
-            if(o.seq<=lastSeq) return "fifo broken";
-            lastSeq=o.seq;
-            if(!ids.insert(o.id).second) return "dup id in book";
-        }
-    }
+    const char* why = check_side(bids, Side::Buy, ids);
+    if(!why) why = check_side(asks, Side::Sell, ids);
+    if(why) return why;
     // price order is the map's job, no point re-checking that
 
     if(!bids.empty() && !asks.empty() && bestBid() >= bestAsk())
