@@ -21,45 +21,40 @@ void OrderBook::add_resting(const Order &o)
         bids[o.px].push_back(o);
 }
 
+// one loop for both sides. opp = the other side's map, begin() is always its best price
+// template only bc asks and bids are different map types (the comparator), nothing fancy
+template<class M, class Cross>
+static void sweep(M &opp, Order &in, Cross crosses, std::vector<Trade> &trades)
+{
+    while(in.qty>0 && !opp.empty()) {
+        auto lvl = opp.begin();
+        if(!crosses(lvl->first)) break;   // best price is outside our limit, stop
+
+        auto &q = lvl->second;
+        while(in.qty > 0 && !q.empty()) {
+            Order &rest = q.front();
+            Qty n = std::min(in.qty, rest.qty);
+            trades.push_back({rest.id, in.id, rest.px, n});
+            in.qty -= n;
+            rest.qty -= n;
+            if(rest.qty==0) q.pop_front();
+            // ^ rest is dangling after this, dont touch it
+        }
+        if(q.empty()) opp.erase(lvl);
+    }
+}
+
 std::vector<Trade> OrderBook::match(Order in)
 {
     std::vector<Trade> trades;
+    const Px lim = in.px;
 
-    if(in.side==Side::Buy) {
-        while(in.qty>0 && !asks.empty()) {
-            auto lvl = asks.begin();
-            if(lvl->first > in.px) break;   // best ask above our limit, stop
-
-            auto &q = lvl->second;
-            while(in.qty > 0 && !q.empty()) {
-                Order &rest = q.front();
-                Qty n = std::min(in.qty, rest.qty);
-                trades.push_back({rest.id, in.id, rest.px, n});
-                in.qty -= n;
-                rest.qty -= n;
-                if(rest.qty==0) q.pop_front();
-                // ^ rest is dangling after this, dont touch it
-            }
-            if(q.empty()) asks.erase(lvl);
-        }
-    }
-    else {
-        // same thing mirrored. bids.begin() is the highest bid
-        while (in.qty>0 && !bids.empty()) {
-            auto lvl = bids.begin();
-            if(lvl->first < in.px) break;
-
-            auto& q = lvl->second;
-            while(in.qty>0 && !q.empty()) {
-                Order &rest = q.front();
-                Qty n = std::min(in.qty, rest.qty);
-                trades.push_back({rest.id, in.id, rest.px, n});
-                in.qty-=n;  rest.qty-=n;
-                if(rest.qty==0) q.pop_front();
-            }
-            if(q.empty()) bids.erase(lvl);
-        }
-    }
+    if(in.side==Side::Buy)
+        sweep(asks, in, [lim](Px p){ return p <= lim; }, trades);
+    else
+        sweep(bids, in, [lim](Px p){ return p >= lim; }, trades);
+    //  if(lvl->first > in.px) break;    <- old buy version
+    //  if(lvl->first < in.px) break;    <- old sell version
 
     if(in.qty > 0) add_resting(in);
     return trades;

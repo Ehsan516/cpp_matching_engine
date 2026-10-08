@@ -61,4 +61,7 @@
 - baseline in docs/bench.md @ ead34ed. cancel 100k = ~97s (!!), linear scan is O(n) per cancel
   rest ~5M cmds/s, match ~3.8M cmds/s. mixed slow bc of its cancels
 
-next: tidy the copy pasted buy/sell loops before touching cancel, so the index only has to go in once
+- buy/sell match loops -> one sweep() template. only reason its a template is the 2 map types
+  tests + bench counts identical before/after
+
+next: same treatment for cancel + check()
