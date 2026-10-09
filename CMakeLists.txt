@@ -59,6 +59,11 @@ add_executable(tests  tests/test_main.cpp)
 target_link_libraries(tests engine)
 add_test(NAME unit COMMAND tests)
 
+# same tests vs the scan build, both versions have to behave identically
+add_executable(tests_scan tests/test_main.cpp)
+target_link_libraries(tests_scan engine_scan)
+add_test(NAME unit_scan COMMAND tests_scan)
+
 # cli fixtures. name / exit code
 foreach(fx  example:0  ex_b:0  ex_c:1  errors:1)
     string(REPLACE ":" ";" parts ${fx})

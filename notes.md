@@ -71,4 +71,10 @@
   entry gets dropped BEFORE the order is erased, on fill and on cancel
   cancel is O(log levels) now bc of the map find, not O(1)
 
-next: index checks in check() (every entry -> one live order, every order -> one entry)
+- check() covers the index too: sizes match, every entry -> live order w/ same id/side/px
+  tested by breaking it on purpose (not dropping the entry on fill) -> tests fail. exC follow up
+  catches it first: CANCEL of a filled order finds the stale entry, then frees a dangling iterator and aborts
+
+- tests_scan = same test file linked against engine_scan. ctest runs both (unit + unit_scan)
+
+next: proper before/after numbers at n=100k -> docs/bench.md
