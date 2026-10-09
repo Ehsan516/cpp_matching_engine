@@ -18,7 +18,14 @@ if(SANITIZE)
     # ^ no-recover so ubsan actually fails the test instead of just printing
 endif()
 
-add_library(engine src/book.cpp src/engine.cpp src/parser.cpp src/format.cpp)
+set(ENG_SRC src/book.cpp src/engine.cpp src/parser.cpp src/format.cpp)
+
+add_library(engine ${ENG_SRC})
+target_compile_definitions(engine PUBLIC ENGINE_INDEX=1)
+# ^ PUBLIC so everything linking it sees the same OrderBook layout
+
+# old linear scan cancel. kept so the two can be benchmarked side by side
+add_library(engine_scan ${ENG_SRC})
 
 add_executable(matcher app/main.cpp)
 target_link_libraries(matcher engine)
@@ -26,6 +33,8 @@ target_link_libraries(matcher engine)
 
 add_executable(bench bench/bench.cpp)
 target_link_libraries(bench engine)
+add_executable(bench_scan bench/bench.cpp)
+target_link_libraries(bench_scan engine_scan)
 
 # bake build info into bench so every result says what it came from
 # NOTE sha is grabbed at configure time, rerun cmake if you want it fresh
@@ -34,14 +43,16 @@ execute_process(COMMAND git describe --always --dirty
     # ^ -dirty = uncommitted changes, so that result cant be reproduced from the sha alone
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_SHA OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-target_compile_definitions(bench PRIVATE
-    BENCH_CXX="${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}"
-    BENCH_FLAGS="${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_bt}}"
-    BENCH_BT="${CMAKE_BUILD_TYPE}"
-    BENCH_SHA="${GIT_SHA}")
-if(SANITIZE)
-    target_compile_definitions(bench PRIVATE BENCH_SAN=1)
-endif()
+foreach(b bench bench_scan)
+    target_compile_definitions(${b} PRIVATE
+        BENCH_CXX="${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}"
+        BENCH_FLAGS="${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_bt}}"
+        BENCH_BT="${CMAKE_BUILD_TYPE}"
+        BENCH_SHA="${GIT_SHA}")
+    if(SANITIZE)
+        target_compile_definitions(${b} PRIVATE BENCH_SAN=1)
+    endif()
+endforeach()
 
 enable_testing()
 add_executable(tests  tests/test_main.cpp)

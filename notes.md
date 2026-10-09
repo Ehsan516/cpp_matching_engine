@@ -66,4 +66,9 @@
 
 - cancel + check() deduped the same way. left snapshot() alone, its 5 lines
 
-next: the index. unordered_map id -> {side, px, list iterator}
+- index: unordered_map id -> {side, px, list iterator}, behind ENGINE_INDEX.
+  engine = index (default), engine_scan = old scan. bench vs bench_scan same source
+  entry gets dropped BEFORE the order is erased, on fill and on cancel
+  cancel is O(log levels) now bc of the map find, not O(1)
+
+next: index checks in check() (every entry -> one live order, every order -> one entry)

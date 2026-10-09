@@ -40,6 +40,11 @@ static void print_env() {
     if(uname(&u)==0) std::printf("os:       %s %s %s\n", u.sysname, u.release, u.machine);
 #endif
     std::printf("cpu:      %s\n", cpu_name().c_str());
+#ifdef ENGINE_INDEX
+    std::printf("cancel:   id index\n");
+#else
+    std::printf("cancel:   linear scan\n");
+#endif
 
 #ifndef NDEBUG
     std::printf("!! asserts on / not a release build, numbers are not worth recording\n");
