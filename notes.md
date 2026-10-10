@@ -77,4 +77,7 @@
 
 - tests_scan = same test file linked against engine_scan. ctest runs both (unit + unit_scan)
 
-next: proper before/after numbers at n=100k -> docs/bench.md
+- before/after in docs/bench.md @ b9f5072. cancel 106s -> 33ms, mixed 13.5s -> 18ms
+  BUT rest/match ~25% slower, the index isnt free. honest trade off, wrote it up
+
+next: separate per-command latency run (p50/p99), timer overhead noted

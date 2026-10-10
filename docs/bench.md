@@ -54,3 +54,38 @@ mixed actual outcome: the 11106 rejects are all cancels that hit an id that had 
 
 next: add an id -> (side, price, list iterator) index so cancel doesnt have to search. expected cost: more
 memory and a bit of extra work on every add/fill to keep the index in sync. will measure the same 4 workloads after.
+
+## after: id -> location index
+
+`unordered_map<OrderId, {side, px, list iterator}>` for resting orders. entry added when an order rests, dropped
+when it fills or gets cancelled. cancel = hash lookup + `map::find` for the level + list erase at a known spot,
+so avg O(log levels) per cancel, not O(1) (hash lookup is average constant, not guaranteed).
+
+both builds from the same commit (`b9f5072`, same release build dir, same machine/setup as above), run back to
+back in one session: `bench` (index) first then `bench_scan` (scan). same command, n=100000 seed=1 trials=5.
+
+> bench printed `b9f5072-dirty`. the only "change" was docs/bench.md having CRLF line endings in the checkout
+> (WSL git doesnt convert them), no source file differed.
+
+| workload | scan median ms | index median ms | change | index min / max |
+|---|---|---|---|---|
+| rest | 20.01 | 24.97 | **+24.8%** (slower) | 22.07 / 26.55 |
+| match | 19.95 | 25.50 | **+27.8%** (slower) | 23.49 / 28.45 |
+| cancel | 105,929.39 | 32.68 | **-99.97%** (~3,240x faster) | 31.27 / 34.50 |
+| mixed | 13,542.15 | 18.34 | **-99.86%** (~740x faster) | 17.22 / 19.23 |
+
+outcomes are identical between the two (same checksums, ok/rej/trade counts, sink=28418420) so theyre doing
+the same work. unit tests run against both builds too (`unit` / `unit_scan`).
+
+### reading it
+
+- cancel goes from ~1k to ~3M cmds/s. the whole O(n^2) thing is gone, its now about the same cost as an add
+- **adds and matching got ~25-28% slower.** every resting add now also does a hash insert (and sometimes a
+  rehash), every filled maker does a hash erase. in rest and match thats pure overhead since nothing gets cancelled
+- so its a trade: if the workload cancels basically never, the scan version is faster. any real amount of
+  cancelling and the index wins by a mile (mixed is only 25% cancels and its 740x faster)
+- memory: the index holds one entry per resting order. didnt measure how much extra that is, so not claiming a number
+- noise: the scan cancel median was 97.2s in the baseline run and 105.9s here, max 146.7s this time.
+  same code for that part, so session to session variation is easily ~10% on this laptop. the 25% add slowdown is
+  bigger than that and both columns came from the same session, but treat it as roughly 25%, not exactly
+- possible next thing (not doing it now): `idx.reserve()` up front to skip rehashing, might win back some of the add cost

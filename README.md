@@ -85,5 +85,7 @@ fixtures/         example inputs + expected outputs
 
 ## todo
 
-- benchmarks (bench/) + write up
-- cancel is a linear scan right now, want to try an id -> location index
+- ~~benchmarks (bench/) + write up~~
+- ~~cancel is a linear scan right now, want to try an id -> location index~~ done, see docs/bench.md.
+  cancel went from ~100s to ~33ms for 100k cancels, adds got ~25% slower. old scan version still builds as `engine_scan`
+- try `reserve()` on the index
