@@ -28,7 +28,12 @@ separate release build, dont benchmark the debug or asan ones:
 cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release
 ./build-release/bench --n 100000 --seed 1 --trials 5
+./build-release/bench_lat --n 100000 --seed 1 --trials 5
 ```
+
+`bench` = batch throughput, `bench_lat` = per command latency (p50/p99, plus what the clock itself costs).
+separate runs on purpose, timing every command changes what gets measured. `bench_scan` / `bench_lat_scan` are the
+same thing against the old scan cancel. `bench_lat --work <name>` runs just one workload.
 
 prints compiler / flags / commit / cpu first so results can be traced back. results + method in [docs/bench.md](docs/bench.md).
 

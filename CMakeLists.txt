@@ -36,6 +36,12 @@ target_link_libraries(bench engine)
 add_executable(bench_scan bench/bench.cpp)
 target_link_libraries(bench_scan engine_scan)
 
+# per command latency (p50/p99). separate exe so its numbers never get mixed up with batch throughput
+add_executable(bench_lat bench/lat.cpp)
+target_link_libraries(bench_lat engine)
+add_executable(bench_lat_scan bench/lat.cpp)
+target_link_libraries(bench_lat_scan engine_scan)
+
 # bake build info into bench so every result says what it came from
 # NOTE sha is grabbed at configure time, rerun cmake if you want it fresh
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _bt)
@@ -43,7 +49,7 @@ execute_process(COMMAND git describe --always --dirty
     # ^ -dirty = uncommitted changes, so that result cant be reproduced from the sha alone
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_SHA OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-foreach(b bench bench_scan)
+foreach(b bench bench_scan bench_lat bench_lat_scan)
     target_compile_definitions(${b} PRIVATE
         BENCH_CXX="${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}"
         BENCH_FLAGS="${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_bt}}"

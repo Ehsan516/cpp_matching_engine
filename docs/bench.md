@@ -89,3 +89,79 @@ the same work. unit tests run against both builds too (`unit` / `unit_scan`).
   same code for that part, so session to session variation is easily ~10% on this laptop. the 25% add slowdown is
   bigger than that and both columns came from the same session, but treat it as roughly 25%, not exactly
 - possible next thing (not doing it now): `idx.reserve()` up front to skip rehashing, might win back some of the add cost
+
+## per command latency
+
+separate exe, `bench_lat` (+ `bench_lat_scan`). **not the same numbers as the batch tables above, dont convert one
+into the other.** a clock pair around every command is extra work the batch run doesnt do.
+
+```
+./build-release/bench_lat --n 100000 --seed 1 --trials 5
+```
+
+### what is timed
+
+- same workloads as `bench`. generators moved into `bench/common.h`, both exes use it. checksums are the same
+  (`c130ac01..`, `1643c219..`, `f2203f32..`, `30c0a274..`) and so are ok/rej/trades and sink
+- same as batch: `reset()` + preload before timing, 1 warmup thrown away, 5 measured, every trial has to give the same counts
+- per command: `t0 = steady_clock::now()`, the engine call (incl reading + freeing the result, same per cmd work as
+  the batch loop), `t1 = now()`, then `t1-t0` in ns into a vector allocated before the trial
+- extra per command vs batch: 2 clock reads + one 8 byte store. the store is outside t0..t1 but still uses cache
+  (100k samples = 800 KB per trial)
+- percentiles = nearest rank over all 5 trials pooled (500k samples per workload). `p99 lo/hi` = lowest/highest
+  p99 of the single trials, to show the spread
+- **raw numbers, timer overhead NOT subtracted**
+
+### the timer
+
+`std::chrono::steady_clock` (libstdc++ = `clock_gettime(CLOCK_MONOTONIC)` underneath). is_steady=1, nominal tick 1 ns.
+bench_lat measures it at startup:
+
+| | run A | run B |
+|---|---|---|
+| overhead, empty now() -> now() pair, 1M samples, min / p50 / p99 | 24 / 29 / 45 ns | 25 / 29 / 46 ns |
+| overhead max | 215 us | 477 us |
+| samples that read 0 | 0 | 0 |
+| smallest / median step the clock was seen to move | 25 / 29 ns | 29 / 32 ns |
+
+- so every sample below has ~25-30 ns of clock in it. thats ~10% at p50 (~250 ns), nothing at p99
+- nominal tick is 1 ns but i only ever saw it move in steps about one `now()` call big. that measurement cant go below
+  the cost of a call, so real resolution is <= ~25 ns. anything under ~30 ns isnt resolvable here
+- the overhead max (100s of us with **nothing** being timed) is the machine (interrupts, scheduler, WSL2), not the
+  engine. same goes for the max column below
+
+### results: id index build
+
+same machine/os/compiler as above. built from `ae95a80` + the uncommitted bench changes (prints `ae95a80-dirty`,
+engine sources unchanged). 3 runs back to back, n=100000 seed=1 trials=5. run A's binary only differed in two printf strings.
+
+| workload | op | samples/run | p50 ns (A / B / C) | p99 ns (A / B / C) | p99.9 ns (A / B / C) | min ns |
+|---|---|---|---|---|---|---|
+| rest | add | 500k | 251 / 265 / 252 | 859 / 1204 / 579 | 3029 / 4518 / 1642 | 105 |
+| match | add | 500k | 218 / 232 / 248 | 1532 / 2013 / 1399 | 7435 / 7882 / 5763 | 92 |
+| cancel | cancel | 500k | 494 / 469 / 593 | 2722 / 2407 / 4060 | 10574 / 7549 / 24815 | 114 |
+| mixed | all | 500k | 236 / 262 / 241 | 1348 / 3401 / 2048 | 4934 / 9031 / 6138 | 41 |
+| mixed | add | 375,255 | 234 / 254 / 238 | 986 / 2332 / 1483 | 3416 / 5867 / 4598 | 93 |
+| mixed | cancel | 124,745 | 257 / 347 / 262 | 2651 / 5244 / 3289 | 7411 / 14531 / 8111 | 41 |
+
+max per run was 0.27-7.7 ms, see the timer bit for why im not reading anything into it.
+
+run B per trial p99 lo/hi, to show the spread inside one run: rest 850/1427, match 1832/2250, cancel 1914/2870,
+mixed 2703/4038.
+
+### reading it
+
+- **p50 is fairly stable, p99 isnt.** add p50 moves <= ~15% between runs, cancel p50 more (469-593, and 257-347 in
+  mixed). p99 moves up to 2x (rest 579-1204, mixed cancel 2651-5244) and a lot between trials of one run too. on a
+  laptop + WSL2 the tail is as much the environment as the engine, so i wouldnt rank workloads by p99 unless the gap is big
+- adds are ~220-270 ns p50 whether resting or crossing. match has the fatter tail (p99 1.4-2 us vs 0.6-1.2 us for rest).
+  guess: sweeps through several levels + more trade vector growth. not profiled
+- cancel in the cancel workload is ~2x an add at p50 (~470-590 ns). guess: cache misses from cancelling shuffled ids
+  in a 100k order book (hash lookup + map find + list node all in different places). also not profiled.
+  in mixed (smaller book, ~9% of cancels miss) cancel p50 is ~260-350 ns. the 41 ns min is a `NOT_FOUND`
+- instrumented mean vs batch, same session: batch gave 311 / 350 / 536 / 241 ns per cmd (rest / match / cancel / mixed).
+  bench_lat means over the 3 runs were 320-399 / 341-373 / 576-821 / 357-511 ns. so timed runs come out at or above
+  batch, about what youd expect from a clock pair per cmd + noise. mixed is the furthest apart and i dont have a good
+  reason why. thats why the two arent reported as the same thing
+- noise: this session's batch run was slower than the "after" table (cancel 53.6 vs 32.7 ms median, rest 31.1 vs 25.0).
+  same code so its the laptop. compare the latency numbers with each other, not with the older batch tables

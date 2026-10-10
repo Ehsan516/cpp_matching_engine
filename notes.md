@@ -80,4 +80,12 @@
 - before/after in docs/bench.md @ b9f5072. cancel 106s -> 33ms, mixed 13.5s -> 18ms
   BUT rest/match ~25% slower, the index isnt free. honest trade off, wrote it up
 
-next: separate per-command latency run (p50/p99), timer overhead noted
+- workload gen / cksum / env print moved to bench/common.h so bench + bench_lat use the exact same inputs
+  (checksums unchanged after the move)
+
+- bench_lat: clock pair around every cmd, ns into a preallocated vector, 1 warmup + 5 trials pooled, nearest rank p50/p99/p99.9
+  split by add/cancel. measures the clock first: empty now()->now() ~29ns p50, never saw a step < ~25ns, so thats the floor.
+  raw numbers, overhead not subtracted. separate exe so nobody mixes it up with batch throughput
+  index: adds ~250ns p50, cancel ~470-590ns p50. p50 repeats ok, p99 jumps up to 2x between runs (laptop + WSL2)
+
+next: idx.reserve()?
