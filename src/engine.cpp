@@ -38,7 +38,8 @@ CxlRes MatchingEngine::cancel(OrderId id)
 
 void MatchingEngine::reset() {
     book = OrderBook();
-    seen.clear();
+    seen = std::unordered_set<OrderId>();
+    // seen.clear();   keeps the bucket array, so the next bench trial started pre sized. not a real reset
     nxtSeq = 1;
 }
 
