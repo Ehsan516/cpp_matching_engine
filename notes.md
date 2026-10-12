@@ -88,4 +88,7 @@
   raw numbers, overhead not subtracted. separate exe so nobody mixes it up with batch throughput
   index: adds ~250ns p50, cancel ~470-590ns p50. p50 repeats ok, p99 jumps up to 2x between runs (laptop + WSL2)
 
+- docs/design.md = cleaned up decision log. ticks, resting px, seen vs active, map/list, index, lifetime,
+  invalid cmds, output, bench boundaries, single thread, complexity + what allocates
+
 next: idx.reserve()?

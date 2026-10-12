@@ -36,6 +36,7 @@ separate runs on purpose, timing every command changes what gets measured. `benc
 same thing against the old scan cancel. `bench_lat --work <name>` runs just one workload.
 
 prints compiler / flags / commit / cpu first so results can be traced back. results + method in [docs/bench.md](docs/bench.md).
+design decisions, ownership rules + complexity in [docs/design.md](docs/design.md).
 
 ## run
 
