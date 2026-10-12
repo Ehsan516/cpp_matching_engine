@@ -31,6 +31,14 @@ public:
 
     const char* check() const;   // nullptr if fine, else what broke. slow, tests only
 
+    void reserve(std::size_t n) {
+#ifdef ENGINE_INDEX
+        idx.reserve(n);
+#else
+        (void)n;   // nothing to size in the scan build
+#endif
+    }
+
 private:
     std::map<Px, std::list<Order>> asks;   // lowest px first
     std::map<Px, std::list<Order>, std::greater<Px>> bids;

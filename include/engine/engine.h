@@ -26,6 +26,9 @@ public:
     const char* check() const {return book.check();}
 
     void reset();
+    // optional. pre size the hash tables for ~n orders so they dont rehash while running
+    // reset() throws this away, call it again after
+    void reserve(std::size_t n) { seen.reserve(n); book.reserve(n); }
 
 private:
     OrderBook book;

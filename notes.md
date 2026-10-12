@@ -91,4 +91,8 @@
 - docs/design.md = cleaned up decision log. ticks, resting px, seen vs active, map/list, index, lifetime,
   invalid cmds, output, bench boundaries, single thread, complexity + what allocates
 
-next: idx.reserve()?
+- reset() was keeping seen's buckets (clear() doesnt free them) so bench trials after the warmup started with seen
+  pre sized but idx empty. now seen = fresh set. older batch tables were measured with the old reset
+- MatchingEngine::reserve(n) -> seen + idx. bench --reserve calls it after reset, untimed. outcomes identical
+
+next: measure with vs without --reserve, same session
