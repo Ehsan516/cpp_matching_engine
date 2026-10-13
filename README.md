@@ -1,5 +1,7 @@
 # wanderwall
 
+![ci](https://github.com/Ehsan516/wanderwall/actions/workflows/ci.yml/badge.svg)
+
 Single-threaded, in-memory limit order matching engine in C++17, for one made-up instrument.
 Price-time priority, partial fills, cancel by id, aggregated book snapshots. Learning project, not a real exchange.
 
@@ -54,7 +56,7 @@ both give the same stdout. one command per line:
 | `CANCEL <id>` | cancel whatever is left of an active order |
 | `BOOK` | print aggregated book |
 
-Keywords are uppercase only. Blank lines and lines starting with `#` are skipped. No inline comments.
+Keywords are uppercase only. Blank lines and lines whose first non-space char is `#` are skipped. No inline comments.
 
 ### output
 
@@ -75,9 +77,38 @@ Exit code: 0 everything accepted, 1 at least one reject, 2 bad arguments / cant 
 - ids can't be reused ever (in one process), even after the order fills or is cancelled. rejected orders don't use up their id
 - a rejected command changes nothing
 
+## demo
+
+the fixtures double as a quick walkthrough:
+
+| file | shows |
+|---|---|
+| `fixtures/example.txt` | partial fill, maker keeps the rest, then cancel of the remainder |
+| `fixtures/ex_b.txt` | FIFO at one price (11 fills before 12) + sweep across two price levels |
+| `fixtures/ex_c.txt` | trade at the resting price (sell limited at 10004 fills at 10005), limit protection, reused id rejected |
+| `fixtures/errors.txt` | every kind of reject, and that later lines still run |
+
+`./build/matcher --input fixtures/ex_b.txt`, expected output is next to each one as `.expected`.
+
+## tests
+
+- `tests/test_main.cpp`: all of T01-T18 from the spec (both buy and sell directions), parser + formatter tests,
+  a seeded random run (2000 cmds) that checks invariants + quantity conservation after every command, and replay
+  determinism. built twice, `unit` (index cancel) + `unit_scan` (old scan cancel)
+- `fixtures/*.txt` vs `*.expected`: runs the real binary through both `--input` and stdin, compares exact output + exit code
+- CI (github actions): a debug build and an asan/ubsan build, both with `-Werror`, both run the full suite on every push
+
+## limitations
+
+- `seen` ids grow for the whole process (until `reset()`), by design, ids can never be reused
+- allocation failure isnt handled. if `bad_alloc` hit in the middle of an add the id would already be marked as used.
+  version 1 documents this instead of trying to recover
+- benchmark numbers are from one laptop under WSL2 and are noisy, see docs/bench.md for how they were taken
+
 ## not included
 
-market orders, amendments, time in force, fees/accounts, self trade prevention, networking, threads, persistence. one instrument only.
+market orders, amendments, time in force, fees, accounts, balances, self trade prevention, exchange connections,
+networking, multithreading, lock-free queues, GUI, persistence/recovery, real money anything. one instrument only.
 
 ## layout
 
@@ -87,7 +118,13 @@ src/              implementation
 app/main.cpp      cli
 tests/            unit tests + fixture runner
 fixtures/         example inputs + expected outputs
+bench/            workload generator, batch bench, per command latency bench
+docs/             bench.md (method + results), design.md (decisions, ownership, complexity)
+.github/          CI
 ```
+
+cancel complexity: avg O(1) hash + O(log levels) for the level lookup with the index, O(resting orders) with the scan.
+full table in docs/design.md.
 
 ## todo
 
@@ -96,3 +133,5 @@ fixtures/         example inputs + expected outputs
   cancel went from ~100s to ~33ms for 100k cancels, adds got ~25% slower. old scan version still builds as `engine_scan`
 - ~~try `reserve()` on the index~~ done, optional `MatchingEngine::reserve(n)`. helps add heavy workloads (~30% on
   rest in a noisy run), see docs/bench.md
+- maybe: profile the cancel workload (guessing cache misses, not checked), flat arrays per price instead of the map,
+  multiple instruments (one engine per symbol)

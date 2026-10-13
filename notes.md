@@ -100,4 +100,8 @@
 - found the "-dirty" cause properly: windows checkout writes CRLF to disk (autocrlf), WSL git sees that as modified.
   repo itself is LF. .gitattributes w/ eol=lf so windows writes LF too
 
-next: final README pass vs the PDD checklist
+- README pass vs the PDD checklists: demo table (which fixture shows what), tests section, limitations,
+  full exclusions list, layout incl bench/docs/.github, ci badge
+- clean clone check @ 0bc80f4: debug + asan build 0 warnings, 6/6 both, cli + demo fixtures match, release bench runs
+
+core + portfolio checklist both covered i think. next if i come back: profile the cancel workload properly
