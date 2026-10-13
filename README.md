@@ -94,4 +94,5 @@ fixtures/         example inputs + expected outputs
 - ~~benchmarks (bench/) + write up~~
 - ~~cancel is a linear scan right now, want to try an id -> location index~~ done, see docs/bench.md.
   cancel went from ~100s to ~33ms for 100k cancels, adds got ~25% slower. old scan version still builds as `engine_scan`
-- try `reserve()` on the index
+- ~~try `reserve()` on the index~~ done, optional `MatchingEngine::reserve(n)`. helps add heavy workloads (~30% on
+  rest in a noisy run), see docs/bench.md

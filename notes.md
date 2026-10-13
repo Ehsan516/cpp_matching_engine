@@ -95,4 +95,9 @@
   pre sized but idx empty. now seen = fresh set. older batch tables were measured with the old reset
 - MatchingEngine::reserve(n) -> seen + idx. bench --reserve calls it after reset, untimed. outcomes identical
 
-next: measure with vs without --reserve, same session
+- reserve measured @ e857342, 8 runs alternating. rest ~-32%, mixed ~-17% (won every pair), match/cancel ~nothing.
+  fits where the inserts are timed. noisy session tho, everything slower than before
+- found the "-dirty" cause properly: windows checkout writes CRLF to disk (autocrlf), WSL git sees that as modified.
+  repo itself is LF. .gitattributes w/ eol=lf so windows writes LF too
+
+next: final README pass vs the PDD checklist

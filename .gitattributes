@@ -1,0 +1,4 @@
+# everything text gets stored + checked out as LF, on windows too
+# (repo had CRLF committed everywhere, made WSL git think files were always modified)
+* text=auto eol=lf
+*.docx binary

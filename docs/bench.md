@@ -165,3 +165,47 @@ mixed 2703/4038.
   reason why. thats why the two arent reported as the same thing
 - noise: this session's batch run was slower than the "after" table (cancel 53.6 vs 32.7 ms median, rest 31.1 vs 25.0).
   same code so its the laptop. compare the latency numbers with each other, not with the older batch tables
+
+## reserve() experiment
+
+the index made adds ~25% slower. idea: part of that is the hash tables (`seen` + `idx`) rehashing as they grow,
+so size them up front. `MatchingEngine::reserve(n)` reserves both, `bench --reserve` calls it right after `reset()`
+with n = preload + timed commands (upper bound on ids/orders), outside the timed part.
+
+also found while doing this: `reset()` used `seen.clear()`, which keeps the bucket array. so in all the batch tables
+above, every trial after the warmup started with `seen` already big enough and only `idx` had to grow. fixed in
+`d2ab324` (`seen` = new empty set). the numbers below have the fixed reset, so dont compare them with the older tables.
+
+### setup
+
+commit `e857342` (clean), index build, release, same laptop/WSL2 as above. n=100000 seed=1 trials=5.
+8 runs alternating: A1 B1 A2 B2 then B3 A3 B4 A4 (A = no reserve, B = `--reserve`), reserve first in the second
+half so a drift over time cant favour one side. outcomes identical in every run (checksums, counts, sink=28418420).
+
+**this session was noisy.** everything is slower than the earlier sessions (rest ~25 ms then, 37-50 ms now without
+reserve) and the same config moved a lot between runs (cancel without reserve: 51 / 100 / 62 / 72 ms).
+
+### results (median ms per run)
+
+| workload | no reserve A1 / A2 / A3 / A4 | reserve B1 / B2 / B3 / B4 | median of the 4 runs, no -> yes | reserve faster in |
+|---|---|---|---|---|
+| rest | 37.8 / 45.8 / 37.1 / 50.5 | 25.7 / 32.5 / 30.0 / 26.8 | 41.8 -> 28.4 (~ -32%) | 4 of 4 pairs |
+| match | 42.0 / 46.3 / 39.2 / 35.1 | 35.9 / 40.0 / 38.7 / 37.7 | 40.6 -> 38.2 (~ -6%) | 3 of 4 |
+| cancel | 51.3 / 99.9 / 61.5 / 72.0 | 64.3 / 74.2 / 61.3 / 69.2 | 66.75 -> 66.75 (0) | 3 of 4 |
+| mixed | 25.2 / 31.9 / 26.5 / 29.3 | 22.5 / 25.1 / 22.3 / 23.9 | 27.9 -> 23.2 (~ -17%) | 4 of 4 |
+
+### reading it
+
+- lines up with where inserts happen inside the timed part:
+  - rest: 100k new ids into both tables from empty -> lots of rehashing -> biggest win, and it won every pair
+  - mixed: ~75k adds timed, preload is small -> clear win, every pair
+  - match: 200k of the 300k ids go in during the preload (untimed) so the tables are mostly grown already.
+    3 of 4 pairs but one of those is 38.7 vs 39.2, and the run to run spread is way bigger than 6%. maybe a small
+    win, not calling it
+  - cancel: nothing gets inserted while timing -> no change expected. medians come out exactly equal, the 3 of 4
+    is just noise (one pair is 61.3 vs 61.5)
+- so rehashing was a real chunk of the add cost. didnt rerun `bench_scan` in this session, so not claiming
+  how much of the index's ~25% add penalty this wins back, only that reserve helps adds vs not reserving
+- the catch: the engine doesnt know n. a real system would size it from expected order count at startup.
+  so `reserve()` stays optional, default behaviour unchanged
+- given the noise, i'd trust the direction for rest/mixed, not the exact percentages
