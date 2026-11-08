@@ -1,6 +1,6 @@
-# wanderwall
+# CPP order matching engine
 
-![ci](https://github.com/Ehsan516/wanderwall/actions/workflows/ci.yml/badge.svg)
+![ci](https://github.com/Ehsan516/cpp_matching_engine/actions/workflows/ci.yml/badge.svg)
 
 Single-threaded, in-memory limit order matching engine in C++17, for one made-up instrument.
 Price-time priority, partial fills, cancel by id, aggregated book snapshots. Learning project, not a real exchange.
